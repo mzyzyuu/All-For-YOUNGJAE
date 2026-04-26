@@ -71,17 +71,21 @@
             <p><strong>超话粉丝名：</strong>Jupiter <a href="http://t.cn/A6Eip4bj" target="_blank" rel="noopener">http://t.cn/A6Eip4bj</a></p>
         </div>
         <div class="right-stack">
-            <div class="info-box right-box sns-box">
+            <div class="info-box right-box" id="sns-preview-box">
+                <div class="preview-header"><i class="fa-regular fa-newspaper"></i> 最新 SNS 动态</div>
+                <div id="sns-latest-preview" class="preview-inner-content">加载中...</div>
                 <button class="box-btn sns-btn" data-nav="sns">GO TO SNS <i class="fa-solid fa-arrow-right"></i></button>
             </div>
-            <div class="info-box right-box stage-box">
+            <div class="info-box right-box" id="stage-preview-box">
+                <div class="preview-header"><i class="fa-solid fa-microphone-alt"></i> 最新 STAGE 舞台</div>
+                <div id="stage-latest-preview" class="preview-inner-content">加载中...</div>
                 <button class="box-btn stage-btn" data-nav="stage">GO TO STAGE <i class="fa-solid fa-arrow-right"></i></button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- SNS 页面 - 按日期分组展示 -->
+<!-- SNS 页面 -->
 <div class="content sns-page hidden-page dynamic-bg" id="sns-page">
     <div class="floating-shapes">
         <div class="shape shape-1"></div><div class="shape shape-2"></div><div class="shape shape-3"></div>
@@ -236,9 +240,9 @@
         });
     }
 
-
+    // ==================== SNS 数据 ====================
     const snsGroupData = [
-                {
+        {
             date: "2026.04.25",
             posts: [
                 { 
@@ -318,7 +322,7 @@
                 }
             ]
         },
-                {
+        {
             date: "2026.04.11",
             posts: [
                 { 
@@ -328,7 +332,7 @@
                 }
             ]
         },
-                {
+        {
             date: "2026.04.08",
             posts: [
                 { 
@@ -338,7 +342,7 @@
                 }
             ]
         },
-                {
+        {
             date: "2026.04.06",
             posts: [
                 { 
@@ -348,7 +352,7 @@
                 }
             ]
         },
-                {
+        {
             date: "2026.04.03",
             posts: [
                 { 
@@ -358,7 +362,7 @@
                 }
             ]
         },
-                {
+        {
             date: "2026.04.02",
             posts: [
                 { 
@@ -368,7 +372,7 @@
                 }
             ]
         },
-                {
+        {
             date: "2026.04.01",
             posts: [
                 { 
@@ -378,6 +382,20 @@
                 }
             ]
         },
+    ];
+
+    // ==================== STAGE 数据 ====================
+    const stagePostsData = [
+        {
+            title: "TWS 英宰 - 情(原唱:Young Turks Club)",
+            date: "2026.04.18",
+            content: "[不朽的名曲2] | KBS 260418 直拍\n✨ 超清舞台 + 绝美直拍",
+            links: [
+                { url: "https://youtu.be/U-BgpVGlB8E?si=A8agdum8pm0AAqkh", text: "YouTube", icon: "fab fa-youtube" },
+                { url: "https://weibo.com/1697777195/5289162041461290", text: "微博", icon: "fab fa-weibo" }
+            ],
+            customImage: "images/20260418fancam.jpg"
+        }
     ];
 
     function escapeHtml(str) {
@@ -394,7 +412,6 @@
         return html;
     }
 
-    // 生成图片HTML，尝试 jpg 和 png 扩展名
     function renderImages(imageNames) {
         if (!imageNames || imageNames.length === 0) return '';
         let imagesHtml = '<div class="post-images-grid">';
@@ -410,17 +427,100 @@
         return imagesHtml;
     }
 
+    function renderVideos(videoNames) {
+        if (!videoNames || videoNames.length === 0) return '';
+        let videosHtml = '';
+        for (let vid of videoNames) {
+            const possibleExtensions = ['mp4', 'mov', 'webm', 'MP4', 'MOV'];
+            let sourceTags = '';
+            possibleExtensions.forEach(ext => {
+                const videoPath = `images/${vid}.${ext}`;
+                sourceTags += `<source src="${videoPath}" type="video/${ext === 'mov' ? 'quicktime' : ext}">`;
+            });
+            videosHtml += `
+                <div class="post-video-container">
+                    <video class="post-video" controls preload="metadata">
+                        ${sourceTags}
+                        <p class="video-fallback-message">⚠️ 视频文件缺失</p>
+                    </video>
+                </div>`;
+        }
+        return videosHtml;
+    }
+
+    // 获取最新一条SNS
+    function getLatestSNS() {
+        const sorted = [...snsGroupData].sort((a, b) => 
+            new Date(b.date.replace(/\./g, '-')) - new Date(a.date.replace(/\./g, '-'))
+        );
+        if (sorted.length === 0 || sorted[0].posts.length === 0) return null;
+        return { date: sorted[0].date, ...sorted[0].posts[0] };
+    }
+
+    // 获取最新一条STAGE
+    function getLatestStage() {
+        if (stagePostsData.length === 0) return null;
+        return stagePostsData[0];
+    }
+
+    // 更新SNS预览框
+    function updateSnsPreview() {
+        const previewDiv = document.getElementById('sns-latest-preview');
+        if (!previewDiv) return;
+        const latest = getLatestSNS();
+        if (latest) {
+            let previewHtml = `<div class="mini-preview-post">
+                <div class="mini-preview-title">📌 ${escapeHtml(latest.title)} <span style="font-size:0.65rem; color:#6c8d9e;">${escapeHtml(latest.date)}</span></div>
+                <div class="mini-preview-content">${formatContent(latest.content.substring(0, 100))}${latest.content.length > 100 ? '…' : ''}</div>`;
+            if (latest.images && latest.images.length > 0) {
+                previewHtml += `<div class="mini-preview-images">`;
+                for (let img of latest.images.slice(0, 3)) {
+                    previewHtml += `<img src="images/${img}.jpg" onerror="this.src='images/${img}.png';" style="width:50px;height:50px;object-fit:cover;border-radius:8px;">`;
+                }
+                previewHtml += `</div>`;
+            }
+            if (latest.videos && latest.videos.length > 0) {
+                previewHtml += `<div style="font-size:0.7rem; color:#2a6b8f; margin-top:6px;">🎬 包含视频内容，点击查看完整动态</div>`;
+            }
+            previewHtml += `</div>`;
+            previewDiv.innerHTML = previewHtml;
+        } else {
+            previewDiv.innerHTML = '<div class="preview-empty">暂无最新动态</div>';
+        }
+    }
+
+    // 更新STAGE预览框
+    function updateStagePreview() {
+        const previewDiv = document.getElementById('stage-latest-preview');
+        if (!previewDiv) return;
+        const latest = getLatestStage();
+        if (latest) {
+            let previewHtml = `<div class="mini-preview-post">
+                <div class="mini-preview-title">🎭 ${escapeHtml(latest.title)} <span style="font-size:0.65rem; color:#6c8d9e;">${escapeHtml(latest.date)}</span></div>
+                <div class="mini-preview-content">${formatContent(latest.content.substring(0, 90))}${latest.content.length > 90 ? '…' : ''}</div>`;
+            if (latest.links && latest.links.length > 0) {
+                previewHtml += `<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;">`;
+                for (let link of latest.links) {
+                    previewHtml += `<a href="${link.url}" target="_blank" style="font-size:0.7rem; background:#e2ecf5; padding:2px 10px; border-radius:30px; text-decoration:none; color:#024d73;">🔗 ${link.text}</a>`;
+                }
+                previewHtml += `</div>`;
+            }
+            if (latest.customImage) {
+                previewHtml += `<img src="${latest.customImage}" onerror="this.style.display='none'" style="max-width:100%; max-height:80px; border-radius:12px; margin-top:8px; object-fit:cover;">`;
+            }
+            previewHtml += `</div>`;
+            previewDiv.innerHTML = previewHtml;
+        } else {
+            previewDiv.innerHTML = '<div class="preview-empty">暂无舞台更新</div>';
+        }
+    }
+
     function loadSNSContent() {
         const container = document.getElementById('sns-dynamic-content');
         if (!container) return;
-        
-        // 按日期倒序排列（最新的在上面）
-        const sortedGroups = [...snsGroupData].sort((a, b) => {
-            const dateA = new Date(a.date.replace(/\./g, '-'));
-            const dateB = new Date(b.date.replace(/\./g, '-'));
-            return dateB - dateA;
-        });
-        
+        const sortedGroups = [...snsGroupData].sort((a, b) => 
+            new Date(b.date.replace(/\./g, '-')) - new Date(a.date.replace(/\./g, '-'))
+        );
         let html = '';
         for (const group of sortedGroups) {
             html += `<div class="sns-date-group">
@@ -428,39 +528,53 @@
                             <i class="fa-regular fa-calendar-alt"></i> ${escapeHtml(group.date)}
                         </div>
                         <div class="group-posts">`;
-            
             for (const post of group.posts) {
                 const imagesHtml = renderImages(post.images);
+                const videosHtml = renderVideos(post.videos);
                 html += `<div class="post-card">
                             <div class="post-title">${escapeHtml(post.title)}</div>
                             <div class="post-content">${formatContent(post.content)}</div>
                             ${imagesHtml}
-                         </div>`;
+                            ${videosHtml}
+                        </div>`;
             }
-            
             html += `</div></div>`;
         }
-        
         container.innerHTML = html;
     }
 
-    // ==================== STAGE 内容 ====================
     function loadStageContent() {
         const container = document.getElementById('stage-dynamic-content');
         if (!container) return;
-        const posts = [
-            { title: "🎤 2025 粉丝演唱会", date: "2025.05.01", content: "表演《Lovely》+ 未公开新歌，银发造型惊艳全场！高音部分震撼 ✨" },
-            { title: "🌟 音乐银行特别舞台", date: "2025.03.15", content: "领舞部分完美消化，ending妖精荣宰！直拍播放量突破10w 🔥" },
-            { title: "💃 舞蹈 challenge 合作", date: "2025.02.10", content: "与队友的舞蹈cover，线条流畅力度到位，好评如潮" },
-            { title: "🎶 蒙面歌王出演", date: "2024.12.20", content: "展现惊人主唱实力，评委感叹'宝藏主唱'，清亮音色打动全场" },
-            { title: "🏆 年末歌谣大战", date: "2024.12.25", content: "红毯西装造型热帖，合作舞台表现力绝佳，全能型爱豆认证" }
-        ];
-        container.innerHTML = posts.map(p => `
-            <div class="post-card stage-card">
-                <div class="post-title">${escapeHtml(p.title)} <span class="post-date">📅 ${escapeHtml(p.date)}</span></div>
-                <div class="post-content">${formatContent(p.content)}</div>
-            </div>
-        `).join('');
+        let finalHtml = '';
+        for (let p of stagePostsData) {
+            let linksHtml = '';
+            if (p.links && p.links.length) {
+                linksHtml = `<div class="stage-links">`;
+                p.links.forEach(link => {
+                    linksHtml += `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="stage-link"><i class="${link.icon || 'fa-solid fa-link'}"></i> ${escapeHtml(link.text)}</a>`;
+                });
+                linksHtml += `</div>`;
+            }
+            let imageHtml = '';
+            if (p.customImage) {
+                const imgPath = p.customImage;
+                imageHtml = `<div class="stage-fancam-img">
+                    <img src="${imgPath}" alt="舞台饭拍" 
+                         onerror="this.onerror=null; this.src='${imgPath.replace(/\.jpg$/i, '.png').replace(/\.jpeg$/i, '.png')}';"
+                         loading="lazy">
+                </div>`;
+            }
+            finalHtml += `
+                <div class="post-card stage-card">
+                    <div class="post-title">${escapeHtml(p.title)} <span class="post-date">📅 ${escapeHtml(p.date)}</span></div>
+                    <div class="post-content">${formatContent(p.content)}</div>
+                    ${linksHtml}
+                    ${imageHtml}
+                </div>
+            `;
+        }
+        container.innerHTML = finalHtml;
     }
 
     buildDots();
@@ -473,7 +587,10 @@
         if (!pages.home.classList.contains('hidden-page')) updateDots(currentIdx);
     });
     pageObserver.observe(pages.home, { attributes: true });
-</script>
 
+    // 初始化预览框
+    updateSnsPreview();
+    updateStagePreview();
+</script>
 </body>
 </html>
